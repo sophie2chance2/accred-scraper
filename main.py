@@ -68,14 +68,16 @@ def call_crew(request: str):
             "session_id": session_id
         }
     )
-    
+
     post_session_url = f"https://www.browserbase.com/sessions/{session_id}"
     print(f"Post Session URL: {post_session_url}")
 
     return result
 
-output = call_crew("Tell me about the school Genesis")
-print(output)
+################################## Main ##########################################
+
+# output = call_crew("Tell me about the school Genesis")
+# print(output)
 
 
 
