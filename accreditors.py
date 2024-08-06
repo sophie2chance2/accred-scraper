@@ -2,6 +2,7 @@
 from selenium import webdriver
 from selenium.webdriver.remote.remote_connection import RemoteConnection
 from selenium.webdriver.support.ui import Select
+from selenium.webdriver.common.by import By
 import requests
 import os
 from time import sleep
@@ -11,11 +12,11 @@ from crewai_tools import tool
 from typing import Optional
 load_dotenv()
 
-def create_session():
-    url = 'https://www.browserbase.com/v1/sessions'
-    headers = {'Content-Type': 'application/json', 'x-bb-api-key': os.environ["BROWSERBASE_API_KEY"]}
-    response = requests.post(url, json={ "projectId": os.environ["BROWSERBASE_PROJECT_ID"] }, headers=headers, timeout=10)
-    return response.json()['id']
+# def create_session():
+#     url = 'https://www.browserbase.com/v1/sessions'
+#     headers = {'Content-Type': 'application/json', 'x-bb-api-key': os.environ["BROWSERBASE_API_KEY"]}
+#     response = requests.post(url, json={ "projectId": os.environ["BROWSERBASE_PROJECT_ID"] }, headers=headers, timeout=10)
+#     return response.json()['id']
 
 
 class CustomRemoteConnection(RemoteConnection):
@@ -32,7 +33,7 @@ class CustomRemoteConnection(RemoteConnection):
         return headers
 
 @tool("accred_accsc")
-def accred_accsc(school_name: str, state: Optional[str] = '') -> str: 
+def accred_accsc(session_id:str, school_name: str, state: Optional[str] = '') -> str: 
     """Input search parameters to find a school(s) in the ACCSC database. 
     school_name: name of the school to search for
     state (optional): full name of the state
@@ -40,7 +41,7 @@ def accred_accsc(school_name: str, state: Optional[str] = '') -> str:
     Returns the search results."""
     url = "https://www.accsc.org/Directory/index.aspx"
 
-    session_id = create_session()
+    # session_id = create_session()
     custom_conn = CustomRemoteConnection('http://connect.browserbase.com/webdriver', session_id)
     options = webdriver.ChromeOptions()
     options.debugger_address = "localhost:9223"
@@ -48,7 +49,7 @@ def accred_accsc(school_name: str, state: Optional[str] = '') -> str:
     driver.get(url)
     driver.switch_to.frame("frmDirSearch")
 
-    print("Waiting for page to load...")
+    print("Starting ACCSC Search...")
     sleep(1)
 
     search_box = driver.find_element(by="id", value="txtSchoolSearch")
@@ -69,7 +70,7 @@ def accred_accsc(school_name: str, state: Optional[str] = '') -> str:
     accept_button.click()
 
     print("Getting search results...")
-    sleep(2)
+    sleep(1)
 
     try:
         result_table = driver.find_element(by='id', value='grdResult')
@@ -77,6 +78,57 @@ def accred_accsc(school_name: str, state: Optional[str] = '') -> str:
         search_results = html2text(page_html)
     except:
         search_results = "Not accredited by ACCSC."
+    # driver.quit()
+
+    return search_results
+
+@tool("accred_abhes")
+def accred_abhes(session_id:str, school_name: str) -> str: 
+    """Input search parameters to find a school(s) in the ABHES database. 
+    school_name: name of the school to search for
+    Returns the search results."""
+    url = "https://portal.abhes.org/directory/"
+
+    # session_id = create_session()
+    custom_conn = CustomRemoteConnection('http://connect.browserbase.com/webdriver', session_id)
+    options = webdriver.ChromeOptions()
+    options.debugger_address = "localhost:9223"
+    driver = webdriver.Remote(custom_conn, options=options)
+    driver.get(url)
+
+    print("Starting ABHES Search...")
+
+    search_box = driver.find_element(by="id", value="txt-inst-name")
+    search_box.send_keys(school_name)
+
+    print(f"Searching for {school_name}...")
+
+    search_button = driver.find_element(By.CLASS_NAME, 'btn-search-by-name')
+    search_button.click()
+
+    try:
+        result_table = driver.find_element(By.CLASS_NAME, 'search-results-wrapper')
+        page_html = result_table.get_attribute('innerHTML')
+        search_results = html2text(page_html)
+    except:
+        search_results = "Not accredited by ABHES."
     driver.quit()
 
     return search_results
+
+
+# @tool("find_params")
+# def find_params(url: str) -> str: 
+#     """Input the URL of the search page to find the search parameters.
+#     Returns the full HTML content of the search page."""
+
+#     session_id = create_session()
+#     custom_conn = CustomRemoteConnection('http://connect.browserbase.com/webdriver', session_id)
+#     options = webdriver.ChromeOptions()
+#     options.debugger_address = "localhost:9223"
+#     driver = webdriver.Remote(custom_conn, options=options)
+#     driver.get(url)
+#     page_html = driver.page_source
+#     driver.quit()
+
+#     return page_html
